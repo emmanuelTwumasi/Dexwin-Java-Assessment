@@ -1,7 +1,7 @@
 package com.dexwin.currencyconverter.controller;
 
+import com.dexwin.currencyconverter.model.ExchangeRateResponse;
 import com.dexwin.currencyconverter.service.CurrencyService;
-import org.json.JSONObject;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +28,7 @@ public class CurrencyController {
 
     //live exchange rates
     @GetMapping(value = "/rates", produces = MediaType.APPLICATION_JSON_VALUE)
-    public JSONObject getRates() {
+    public ExchangeRateResponse getRates() {
         return currencyService.sendLiveRequest();
     }
 

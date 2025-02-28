@@ -1,16 +1,21 @@
 package com.dexwin.currencyconverter.service;
 
-import com.dexwin.currencyconverter.model.ExchangeRateResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.http.HttpClient;
 
-public interface CurrencyService {
+@Configuration
+public class AppConfig {
 
-    double convert(String source, String target, double amount);
+    @Bean
+    public HttpClient httpClient() {
+        return HttpClient.newBuilder().build();
+    }
 
-    ExchangeRateResponse sendLiveRequest();
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
 }
-

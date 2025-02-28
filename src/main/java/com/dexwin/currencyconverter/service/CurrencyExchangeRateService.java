@@ -2,15 +2,8 @@ package com.dexwin.currencyconverter.service;
 
 import com.dexwin.currencyconverter.model.CurrencyConversionResponse;
 import com.dexwin.currencyconverter.model.ErrorResponse;
+import com.dexwin.currencyconverter.model.ExchangeRateResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -20,62 +13,117 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-
-/**
- * TODO: Implementation of this class has to be backed by https://api.exchangerate.host/latest?base=EUR&symbols=AUD,CAD,CHF,CNY,GBP,JPY,USD
- */
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 public class CurrencyExchangeRateService implements CurrencyService {
 
+    private static final Logger LOGGER = Logger.getLogger(CurrencyExchangeRateService.class.getName());
+    private static final String BASE_URL = "https://api.exchangerate.host";
 
-    public static final String BASE_URL = "http://api.exchangerate.host/";
-    public static final String ENDPOINT = "live";
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
-    static CloseableHttpClient httpClient = HttpClients.createDefault();
     @Value("${api.security.access_key.secret}")
-    private String access_key;
+    private String accessKey;
+
+    public CurrencyExchangeRateService(HttpClient httpClient, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public double convert(String source, String target, double amount) {
         try {
-            String url = UriComponentsBuilder.newInstance().scheme("https").host("api.exchangerate.host").path("/convert").queryParam("access_key", access_key).queryParam("from", source).queryParam("to", target).queryParam("amount", String.valueOf(amount)).build().toUriString();
+            // Build the URL dynamically
+            String url = UriComponentsBuilder.fromHttpUrl(BASE_URL)
+                    .path("/convert")
+                    .queryParam("access_key", accessKey)
+                    .queryParam("from", source)
+                    .queryParam("to", target)
+                    .queryParam("amount", amount)
+                    .build()
+                    .toUriString();
 
-            HttpClient client = HttpClient.newHttpClient();
-            HttpResponse<String> response = client.sendAsync(HttpRequest.newBuilder().uri(URI.create(url)).build(), HttpResponse.BodyHandlers.ofString()).join();
+            LOGGER.info("Requesting currency conversion: " + url);
 
+            // Send HTTP Request
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int statusCode = response.statusCode();
             String responseBody = response.body();
-            ObjectMapper objectMapper = new ObjectMapper();
 
-            if (response.statusCode() != 200) {
-                ErrorResponse errorResponse = objectMapper.readValue(responseBody, ErrorResponse.class);
-                throw new RuntimeException("Failed to fetch data from the API");
+            LOGGER.info("Response received: Status Code = " + statusCode);
+
+            // Handle Response
+            if (statusCode >= 200 && statusCode < 300) {
+                return parseCurrencyConversionResponse(responseBody).getResult();
             } else {
-                CurrencyConversionResponse result = objectMapper.readValue(responseBody, CurrencyConversionResponse.class);
-                return result.getResult();
+                handleError(responseBody, "Failed to convert currency");
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch data from the API", e);
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.SEVERE, "Exception while converting currency", e);
+            throw new RuntimeException("Currency conversion failed: ", e);
         }
+        return 0; // Unreachable, included for compile-time correctness
     }
 
     @Override
-    public JSONObject sendLiveRequest() {
-
+    public ExchangeRateResponse sendLiveRequest() {
         try {
-            HttpGet get = new HttpGet(BASE_URL + ENDPOINT + "?access_key=" + access_key);
+            // Build the URL dynamically
+            String url = UriComponentsBuilder.fromHttpUrl(BASE_URL)
+                    .path("/live")
+                    .queryParam("access_key", accessKey)
+                    .build()
+                    .toUriString();
 
-            CloseableHttpResponse response = httpClient.execute(get);
-            HttpEntity entity = response.getEntity();
+            LOGGER.info("Requesting live exchange rates: " + url);
 
-            JSONObject exchangeRates = new JSONObject(EntityUtils.toString(entity));
-            httpClient.close();
-            return exchangeRates;
-        } catch (IOException | JSONException e) {
-            // TODO Auto-generated catch block
-            throw new RuntimeException("Failed to fetch data from the API", e);
+            // Send HTTP Request
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int statusCode = response.statusCode();
+            String responseBody = response.body();
+
+            LOGGER.info("Response received: Status Code = " + statusCode);
+
+            // Handle Response
+            if (statusCode >= 200 && statusCode < 300) {
+                return parseExchangeRateResponse(responseBody);
+            } else {
+                handleError(responseBody, "Failed to fetch live exchange rates");
+            }
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.SEVERE, "Exception while fetching live exchange rates", e);
+            throw new RuntimeException("Live exchange rate request failed: ", e);
         }
+        return null;
+    }
 
+    // Parses the API response for the `/convert` endpoint
+    private CurrencyConversionResponse parseCurrencyConversionResponse(String responseBody) throws IOException {
+        return objectMapper.readValue(responseBody, CurrencyConversionResponse.class);
+    }
+
+    // Parses the API response for the `/latest` endpoint
+    private ExchangeRateResponse parseExchangeRateResponse(String responseBody) throws IOException {
+        return objectMapper.readValue(responseBody, ExchangeRateResponse.class);
+    }
+
+    // Handles error responses
+    private void handleError(String responseBody, String errorMessage) throws IOException {
+        ErrorResponse errorResponse = objectMapper.readValue(responseBody, ErrorResponse.class);
+        LOGGER.log(Level.SEVERE, errorMessage + ": " + errorResponse);
+        throw new RuntimeException(errorMessage + ": " + errorResponse);
     }
 }
-
