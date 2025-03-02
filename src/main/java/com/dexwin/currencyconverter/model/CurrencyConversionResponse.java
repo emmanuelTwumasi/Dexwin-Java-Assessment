@@ -1,7 +1,10 @@
 package com.dexwin.currencyconverter.model;
 
-public class CurrencyConversionResponse {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CurrencyConversionResponse{
+    private boolean success;
     private String terms;
     private String privacy;
     private Query query;
@@ -50,6 +53,14 @@ public class CurrencyConversionResponse {
 
     public void setResult(double result) {
         this.result = result;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
     }
 
     public static class Query {

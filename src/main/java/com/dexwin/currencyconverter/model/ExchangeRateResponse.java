@@ -3,9 +3,6 @@ package com.dexwin.currencyconverter.model;
 import java.util.Map;
 
 public class ExchangeRateResponse {
-    public ExchangeRateResponse() {
-    }
-
     private boolean success;
     private String terms;
     private String privacy;
@@ -63,7 +60,7 @@ public class ExchangeRateResponse {
 
     @Override
     public String toString() {
-        return "CurrencyConversionResponse{" +
+        return "ExchangeRateResponse{" +
                 "success=" + success +
                 ", terms='" + terms + '\'' +
                 ", privacy='" + privacy + '\'' +

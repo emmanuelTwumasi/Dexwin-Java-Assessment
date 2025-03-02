@@ -26,7 +26,6 @@ public class CurrencyController {
         return currencyService.convert(source, target, amount);
     }
 
-    //live exchange rates
     @GetMapping(value = "/rates", produces = MediaType.APPLICATION_JSON_VALUE)
     public ExchangeRateResponse getRates() {
         return currencyService.sendLiveRequest();

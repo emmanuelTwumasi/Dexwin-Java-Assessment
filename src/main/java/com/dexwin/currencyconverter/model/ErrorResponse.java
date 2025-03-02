@@ -1,43 +1,43 @@
 package com.dexwin.currencyconverter.model;
 
-public class ErrorResponse extends ApiResponse {
-    private int code;
-    private String type;
-    private String info;
+public class ErrorResponse {
+    private boolean success;
+    private ErrorDetail error;
 
     public ErrorResponse() {
     }
 
-    public int getCode() {
-        return code;
+    public ErrorResponse(Exception e) {
+        ErrorDetail errorDetail = new ErrorDetail();
+        errorDetail.setCode(500);
+        errorDetail.setType("Internal Server ErrorDetail");
+        errorDetail.setInfo(e.getMessage());
+        this.setError(errorDetail);
+        this.setSuccess(Boolean.FALSE);
     }
 
-    public void setCode(int code) {
-        this.code = code;
+
+    public ErrorDetail getError() {
+        return error;
     }
 
-    public String getType() {
-        return type;
+    public void setError(ErrorDetail errorResponse) {
+        this.error = errorResponse;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public boolean isSuccess() {
+        return success;
     }
 
-    public String getInfo() {
-        return info;
+    public void setSuccess(boolean success) {
+        this.success = success;
     }
 
-    public void setInfo(String info) {
-        this.info = info;
-    }
 
     @Override
     public String toString() {
         return "ErrorResponse{" +
-                "code=" + code +
-                ", type='" + type + '\'' +
-                ", info='" + info + '\'' +
+                "error=" + error +
                 '}';
     }
 }
